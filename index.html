@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeatherGPT — Conversational Weather Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B1220;
+    --panel:#121B2E;
+    --panel-2:#16223A;
+    --grid:#1C2A44;
+    --line:#2A3B57;
+    --signal:#4CE0B3;
+    --signal-dim:#2C7A65;
+    --amber:#F5A623;
+    --danger:#FF5A5F;
+    --text:#E8EDF5;
+    --muted:#8C9BB5;
+    --user-bubble:#1E3A5F;
+    --radius:4px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans',-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  #app{
+    display:flex;
+    flex-direction:column;
+    height:100dvh;
+    max-width:760px;
+    margin:0 auto;
+    position:relative;
+    border-left:1px solid var(--grid);
+    border-right:1px solid var(--grid);
+  }
+
+  /* ---------- header ---------- */
+  header{
+    position:relative;
+    padding:18px 20px 14px;
+    border-bottom:1px solid var(--grid);
+    overflow:hidden;
+    flex-shrink:0;
+  }
+  header::before{
+    content:"";
+    position:absolute;
+    top:-140px; right:-140px;
+    width:320px; height:320px;
+    background:conic-gradient(from 0deg, transparent 0deg, rgba(76,224,179,0.14) 40deg, transparent 90deg, transparent 360deg);
+    border-radius:50%;
+    animation:sweep 8s linear infinite;
+    pointer-events:none;
+  }
+  @media (prefers-reduced-motion: reduce){
+    header::before{animation:none;}
+  }
+  @keyframes sweep{ to{ transform:rotate(360deg); } }
+  .brand-row{display:flex; align-items:baseline; justify-content:space-between; gap:12px; position:relative; z-index:1;}
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand h1{font-size:19px; font-weight:600; margin:0; letter-spacing:0.2px;}
+  .brand span.tag{font-size:11px; color:var(--muted); font-family:'IBM Plex Mono',monospace;}
+  .header-controls{display:flex; align-items:center; gap:8px;}
+  select, .btn-ghost{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    padding:6px 8px;
+    border-radius:var(--radius);
+    cursor:pointer;
+  }
+  select:focus-visible, .btn-ghost:focus-visible, input:focus-visible, button:focus-visible{
+    outline:2px solid var(--signal);
+    outline-offset:1px;
+  }
+  .btn-ghost:hover{border-color:var(--signal-dim);}
+
+  .subtitle{margin:6px 0 0; font-size:12.5px; color:var(--muted); position:relative; z-index:1;}
+
+  /* ---------- conditions strip ---------- */
+  .conditions{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 20px;
+    background:var(--panel);
+    border-bottom:1px solid var(--grid);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:var(--muted);
+    flex-wrap:wrap;
+    flex-shrink:0;
+  }
+  .conditions b{color:var(--text); font-weight:500;}
+  .conditions .loc-form{display:flex; gap:6px; margin-left:auto; align-items:center;}
+  .conditions input[type=text]{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:var(--radius);
+    padding:5px 8px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    width:150px;
+  }
+  .sig{color:var(--signal);}
+
+  /* ---------- info panel ---------- */
+  #infoPanel{
+    display:none;
+    padding:14px 20px;
+    background:var(--panel-2);
+    border-bottom:1px solid var(--grid);
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.6;
+  }
+  #infoPanel.open{display:block;}
+  #infoPanel b{color:var(--text);}
+
+  /* ---------- chat ---------- */
+  #chat{
+    flex:1;
+    overflow-y:auto;
+    padding:18px 20px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .msg{max-width:86%; display:flex; flex-direction:column; gap:6px;}
+  .msg.user{align-self:flex-end; align-items:flex-end;}
+  .msg.assistant{align-self:flex-start; align-items:flex-start;}
+  .bubble{
+    padding:11px 13px;
+    border-radius:6px;
+    font-size:14px;
+    line-height:1.55;
+    white-space:pre-wrap;
+  }
+  .msg.user .bubble{background:var(--user-bubble); border:1px solid #2C4A70;}
+  .msg.assistant .bubble{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-left:3px solid var(--signal);
+  }
+  .msg.assistant .bubble.severity-moderate{border-left-color:var(--amber);}
+  .msg.assistant .bubble.severity-high{border-left-color:var(--amber); box-shadow:inset 0 0 0 1px rgba(245,166,35,0.15);}
+  .msg.assistant .bubble.severity-severe{border-left-color:var(--danger); box-shadow:inset 0 0 0 1px rgba(255,90,95,0.18);}
+  .tag-row{display:flex; gap:6px; flex-wrap:wrap;}
+  .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:0.3px;
+    padding:2px 6px;
+    border-radius:3px;
+    border:1px solid var(--line);
+    color:var(--muted);
+  }
+  .tag.moderate{color:var(--amber); border-color:var(--amber);}
+  .tag.high{color:var(--amber); border-color:var(--amber);}
+  .tag.severe{color:var(--danger); border-color:var(--danger);}
+
+  .msg-actions{display:flex; gap:6px;}
+  .icon-btn{
+    background:none; border:none; color:var(--muted); cursor:pointer;
+    font-size:12px; padding:2px 4px; font-family:'IBM Plex Mono',monospace;
+  }
+  .icon-btn:hover{color:var(--signal);}
+
+  .readout{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--muted);
+    border:1px solid var(--grid);
+    border-radius:var(--radius);
+    overflow-x:auto;
+    background:var(--panel);
+  }
+  .readout table{border-collapse:collapse; width:100%; min-width:420px;}
+  .readout th, .readout td{padding:6px 10px; text-align:left; border-bottom:1px solid var(--grid); white-space:nowrap;}
+  .readout th{color:var(--muted); font-weight:500; font-size:10.5px; text-transform:none;}
+  .readout tr:last-child td{border-bottom:none;}
+  .readout .warn{color:var(--amber);}
+  .readout .danger{color:var(--danger);}
+
+  .typing{display:flex; gap:4px; padding:6px 2px;}
+  .typing span{width:6px; height:6px; border-radius:50%; background:var(--signal-dim); animation:blink 1.2s infinite ease-in-out;}
+  .typing span:nth-child(2){animation-delay:0.2s;}
+  .typing span:nth-child(3){animation-delay:0.4s;}
+  @keyframes blink{ 0%,80%,100%{opacity:0.25;} 40%{opacity:1;} }
+
+  /* ---------- input area ---------- */
+  .chips{
+    display:flex; gap:6px; padding:0 20px 10px; flex-wrap:wrap; flex-shrink:0;
+  }
+  .chip{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--muted);
+    border-radius:14px;
+    padding:5px 11px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .chip:hover{border-color:var(--signal-dim); color:var(--text);}
+
+  #inputBar{
+    display:flex;
+    gap:8px;
+    padding:12px 20px 16px;
+    border-top:1px solid var(--grid);
+    background:var(--panel);
+    flex-shrink:0;
+  }
+  #textInput{
+    flex:1;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:11px 12px;
+    border-radius:var(--radius);
+    font-size:14px;
+    font-family:inherit;
+  }
+  #textInput::placeholder{color:var(--muted);}
+  .round-btn{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    width:42px; height:42px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px;
+    flex-shrink:0;
+  }
+  .round-btn:hover{border-color:var(--signal-dim);}
+  #micBtn.listening{
+    border-color:var(--danger);
+    color:var(--danger);
+    animation:pulse 1.1s infinite;
+  }
+  @keyframes pulse{ 0%,100%{box-shadow:0 0 0 0 rgba(255,90,95,0.35);} 50%{box-shadow:0 0 0 6px rgba(255,90,95,0);} }
+  #sendBtn{background:var(--signal-dim); border-color:var(--signal-dim); color:#06140F;}
+  #sendBtn:hover{background:var(--signal); border-color:var(--signal);}
+
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--grid); border-radius:4px;}
+
+  @media (max-width:480px){
+    .conditions .loc-form{width:100%; margin-left:0;}
+    .conditions input[type=text]{flex:1; width:auto;}
+    header{padding:14px 14px 10px;}
+    .conditions,#chat,.chips,#inputBar{padding-left:14px; padding-right:14px;}
+  }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="brand-row">
+      <div class="brand">
+        <h1>WeatherGPT</h1>
+        <span class="tag">MoES · IMD concept prototype</span>
+      </div>
+      <div class="header-controls">
+        <select id="langSelect" aria-label="Response language"></select>
+        <button class="btn-ghost" id="infoBtn" aria-expanded="false">i</button>
+      </div>
+    </div>
+    <p class="subtitle">Ask about forecasts, warnings or advisories in plain language — by typing or by voice.</p>
+  </header>
+
+  <div id="infoPanel">
+    <div><b>How this prototype works</b></div>
+    <div>Query understanding &amp; multilingual response generation: an LLM (Gemini 3.5 Flash).</div>
+    <div>Live weather &amp; 16-day forecast data: Open-Meteo global NWP blend (GFS/ICON/others) — a stand-in for direct GFS/WRF + WIS2.0 ingestion in a production IMD deployment.</div>
+    <div>Alert thresholds: computed locally from forecast fields (rain, gusts, heat/cold) using indicative IMD-style thresholds — not official warnings.</div>
+    <div>Voice input/output: browser Web Speech API, for low-literacy / rural accessibility.</div>
+    <div>Production path: FastAPI/Node backend, WIS2.0 + MQTT ingestion, PostgreSQL/PostGIS, containerised on Kubernetes, official IMD warning feed as the alert source of truth.</div>
+  </div>
+
+  <div class="conditions" id="conditionsStrip">
+    <span class="mono">…locating</span>
+    <div class="loc-form">
+      <input type="text" id="locInput" placeholder="Set location (e.g. Madurai)" aria-label="Set location">
+      <button class="btn-ghost" id="locSetBtn">Set</button>
+      <button class="btn-ghost" id="locGeoBtn" title="Use my location">📍</button>
+    </div>
+  </div>
+
+  <div id="chat" aria-live="polite"></div>
+
+  <div class="chips" id="chips">
+    <button class="chip" data-q="Give me today's forecast for my location">Today's forecast</button>
+    <button class="chip" data-q="Give me a 7 day crop advisory for my location">Crop advisory</button>
+    <button class="chip" data-q="Give me an aviation weather briefing for my location for today">Flight briefing</button>
+    <button class="chip" data-q="Give me a coastal and marine outlook for my location for the next 3 days">Marine outlook</button>
+    <button class="chip" data-q="Are there any severe weather alerts for my location this week?">Any alerts?</button>
+  </div>
+
+  <div id="inputBar">
+    <button class="round-btn" id="micBtn" title="Voice input" aria-label="Voice input">🎙</button>
+    <input type="text" id="textInput" placeholder="Type your weather question…" aria-label="Type your weather question">
+    <button class="round-btn" id="sendBtn" title="Send" aria-label="Send">➤</button>
+  </div>
+
+</div>
+
+<script>
+/* WeatherGPT client */
+const ui = {
+  en: { locating: '…locating', location: 'Location', set: 'Set', placeholder: 'Type your weather question…', intro: 'Hello — I’m WeatherGPT. Set a location or use the location button, then ask about forecasts, warnings, crops, flights, or marine conditions.', unavailable: 'I could not load weather data. Please check the location and try again.', keyNeeded: 'Live weather is available below. Add a Gemini API key through a secure backend (or window.WEATHERGPT_GEMINI_API_KEY for local testing) for a tailored response.', listening: 'Listening…' },
+  hi: { locating: '…स्थान खोजा जा रहा है', location: 'स्थान', set: 'सेट करें', placeholder: 'मौसम का प्रश्न लिखें…', intro: 'नमस्ते — मैं WeatherGPT हूँ। स्थान सेट करें या स्थान बटन का उपयोग करें, फिर पूर्वानुमान, चेतावनी, खेती या उड़ान के बारे में पूछें।', unavailable: 'मौसम डेटा लोड नहीं हो सका। स्थान जाँचकर पुनः प्रयास करें।', keyNeeded: 'नीचे लाइव मौसम उपलब्ध है। व्यक्तिगत Gemini उत्तर के लिए सुरक्षित बैकएंड से API कुंजी जोड़ें।', listening: 'सुन रहा हूँ…' },
+  ta: { locating: '…இருப்பிடம் கண்டறியப்படுகிறது', location: 'இருப்பிடம்', set: 'அமை', placeholder: 'வானிலை கேள்வியை தட்டச்சிடவும்…', intro: 'வணக்கம் — நான் WeatherGPT. இருப்பிடத்தை அமைக்கவும் அல்லது இருப்பிட பொத்தானைப் பயன்படுத்தவும்; பிறகு முன்னறிவிப்பு, எச்சரிக்கை அல்லது பயிர் ஆலோசனை பற்றி கேளுங்கள்.', unavailable: 'வானிலைத் தரவை ஏற்ற முடியவில்லை. இருப்பிடத்தைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.', keyNeeded: 'நேரடி வானிலை கீழே உள்ளது. தனிப்பட்ட Gemini பதிலுக்கு பாதுகாப்பான பின்னணியில் API விசையைச் சேர்க்கவும்.', listening: 'கேட்கிறது…' }
+};
+const languages = [['en','English'],['hi','हिन्दी'],['ta','தமிழ்']];
+let lang = localStorage.getItem('weathergpt-lang') || 'en';
+let place = null, weather = null, recognition = null;
+const $ = id => document.getElementById(id);
+const esc = text => String(text).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function t(){ return ui[lang] || ui.en; }
+
+function addMessage(text, role='assistant', tags=[], speak=false){
+  const msg=document.createElement('div'); msg.className='msg '+role;
+  const bubble=document.createElement('div'); bubble.className='bubble'; bubble.textContent=text; 
+  
+  if (role === 'assistant' && tags.length > 0) {
+    const combined = tags.join(' ').toLowerCase();
+    if (combined.includes('severe') || combined.includes('strong')) bubble.classList.add('severity-severe');
+    else if (combined.includes('heavy') || combined.includes('heat') || combined.includes('cold')) bubble.classList.add('severity-high');
+    else if (combined.includes('moderate')) bubble.classList.add('severity-moderate');
+  }
+  msg.appendChild(bubble);
+
+  if(tags.length){ 
+    const row=document.createElement('div'); row.className='tag-row'; 
+    row.innerHTML=tags.map(x => {
+      const t = x.toLowerCase();
+      let cls = 'tag';
+      if(t.includes('severe') || t.includes('strong')) cls += ' severe';
+      else if(t.includes('heavy') || t.includes('heat') || t.includes('cold')) cls += ' high';
+      else if(t.includes('moderate')) cls += ' moderate';
+      return `<span class="${cls}">${esc(x)}</span>`;
+    }).join(''); 
+    msg.appendChild(row); 
+  }
+
+  if(role==='assistant' && 'speechSynthesis' in window){ 
+    const actions=document.createElement('div'); actions.className='msg-actions'; 
+    const button=document.createElement('button'); button.className='icon-btn'; 
+    button.textContent='🔊 Read aloud'; button.onclick=()=>speakText(text); 
+    actions.appendChild(button); msg.appendChild(actions); 
+  }
+  
+  $('chat').appendChild(msg); $('chat').scrollTop=$('chat').scrollHeight; if(speak) speakText(text);
+}
+
+function speakText(text){ speechSynthesis.cancel(); const utterance=new SpeechSynthesisUtterance(text); utterance.lang=lang==='hi'?'hi-IN':lang==='ta'?'ta-IN':'en-IN'; speechSynthesis.speak(utterance); }
+function setLanguage(){
+  lang=$('langSelect').value; localStorage.setItem('weathergpt-lang',lang); document.documentElement.lang=lang;
+  $('conditionsStrip').firstElementChild.textContent=place ? `${t().location}: ${place.name}` : t().locating;
+  $('locInput').placeholder=`${t().location} (e.g. Madurai)`; $('locSetBtn').textContent=t().set; $('textInput').placeholder=t().placeholder;
+}
+async function resolveLocation(name){
+  const url='https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name='+encodeURIComponent(name);
+  const data=await fetch(url).then(r=>r.ok?r.json():Promise.reject(r));
+  if(!data.results?.[0]) throw new Error('Location not found'); const result=data.results[0];
+  return {name:[result.name,result.admin1,result.country].filter(Boolean).join(', '), latitude:result.latitude, longitude:result.longitude};
+}
+async function fetchWeather(location){
+  const params=new URLSearchParams({latitude:location.latitude,longitude:location.longitude,current:'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m',daily:'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_gusts_10m',timezone:'auto',forecast_days:'7'});
+  weather=await fetch('https://api.open-meteo.com/v1/forecast?'+params).then(r=>r.ok?r.json():Promise.reject(r)); place=location;
+  const c=weather.current; $('conditionsStrip').firstElementChild.innerHTML=`<b>${esc(place.name)}</b> · ${Math.round(c.temperature_2m)}°C · feels ${Math.round(c.apparent_temperature)}°C · wind ${Math.round(c.wind_speed_10m)} km/h`;
+}
+function alerts(){
+  if(!weather) return []; const d=weather.daily, out=[];
+  const maxRain=Math.max(...d.precipitation_sum), maxGust=Math.max(...d.wind_gusts_10m), maxTemp=Math.max(...d.temperature_2m_max), minTemp=Math.min(...d.temperature_2m_min);
+  if(maxRain>=64) out.push('Severe rain potential'); else if(maxRain>=35) out.push('Heavy rain potential');
+  if(maxGust>=75) out.push('Strong wind potential'); if(maxTemp>=40) out.push('Heat risk'); if(minTemp<=5) out.push('Cold risk'); return out;
+}
+function localBriefing(question){
+  const d=weather.daily, rows=d.time.slice(0,3).map((date,i)=>`${date}: ${Math.round(d.temperature_2m_min[i])}–${Math.round(d.temperature_2m_max[i])}°C, rain ${d.precipitation_sum[i]} mm, gusts ${Math.round(d.wind_gusts_10m[i])} km/h`).join('\n');
+  const risk=alerts(); return `Weather for ${place.name}\nNow: ${Math.round(weather.current.temperature_2m)}°C (feels ${Math.round(weather.current.apparent_temperature)}°C), wind ${Math.round(weather.current.wind_speed_10m)} km/h.\n\nNext 3 days:\n${rows}${risk.length?'\n\nIndicative alert flags: '+risk.join('; ')+'. These are computed from forecast thresholds and are not official warnings.':''}`;
+}
+
+async function askGemini(question, context){
+  const key = 'AQ.Ab8RN6IEQ33FnRbEu5ZfHuluWjuixCfF9MYoFB3M1TO5pwAUGg'; 
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { 
+        parts: [{ text: 'You are WeatherGPT. Give concise, safety-conscious weather guidance in ' + lang + '. Forecast data: ' + context }] 
+      },
+      contents: [{ 
+        role: 'user', 
+        parts: [{ text: question }] 
+      }],
+      generationConfig: { 
+        maxOutputTokens: 700 
+      }
+    })
+  });
+
+  if(!response.ok) throw new Error('Gemini request failed'); 
+  const data = await response.json(); 
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+async function send(question){
+  question=(question||$('textInput').value).trim(); if(!question) return; $('textInput').value=''; addMessage(question,'user');
+  const typing=document.createElement('div'); typing.className='typing'; typing.innerHTML='<span></span><span></span><span></span>'; $('chat').appendChild(typing); $('chat').scrollTop=$('chat').scrollHeight;
+  try { if(!weather){ const query=$('locInput').value.trim() || 'Madurai'; await fetchWeather(await resolveLocation(query)); }
+    const brief=localBriefing(question); let answer; try { answer=await askGemini(question,brief); } catch { answer=null; }
+    typing.remove(); addMessage(answer || brief,'assistant',alerts().length?['Forecast',...alerts().slice(0,2)]:['Forecast']); if(!answer) addMessage(t().keyNeeded,'assistant',['SETUP']);
+  } catch(e) { typing.remove(); addMessage(t().unavailable,'assistant',['ERROR']); }
+}
+async function setPlace(){ try { const name=$('locInput').value.trim(); if(!name) return; await fetchWeather(await resolveLocation(name)); addMessage(localBriefing('forecast'),'assistant',alerts().length?['Forecast',...alerts()]:['Forecast']); } catch { addMessage(t().unavailable,'assistant',['ERROR']); } }
+function useGeolocation(){ if(!navigator.geolocation){ addMessage('Geolocation is not supported by this browser.','assistant',['ERROR']); return; } navigator.geolocation.getCurrentPosition(async pos=>{ try { const lat=pos.coords.latitude, lon=pos.coords.longitude; await fetchWeather({name:`${lat.toFixed(3)}, ${lon.toFixed(3)}`,latitude:lat,longitude:lon}); addMessage(localBriefing('forecast'),'assistant',['Forecast']); } catch { addMessage(t().unavailable,'assistant',['ERROR']); } },()=>addMessage('Location permission was not granted. Enter a location instead.','assistant',['LOCATION'])); }
+function voice(){ const R=window.SpeechRecognition||window.webkitSpeechRecognition; if(!R){ addMessage('Voice input is not supported by this browser.','assistant',['VOICE']); return; } if(recognition){ recognition.stop(); return; } recognition=new R(); recognition.lang=lang==='hi'?'hi-IN':lang==='ta'?'ta-IN':'en-IN'; recognition.interimResults=false; $('micBtn').classList.add('listening'); recognition.onresult=e=>{ $('textInput').value=e.results[0][0].transcript; }; recognition.onend=()=>{$('micBtn').classList.remove('listening'); recognition=null; }; recognition.start(); }
+document.addEventListener('DOMContentLoaded',()=>{ languages.forEach(([value,label])=>$('langSelect').add(new Option(label,value))); $('langSelect').value=lang; setLanguage(); addMessage(t().intro,'assistant',['READY']);$('infoBtn').onclick=()=>{ $('infoPanel').classList.toggle('open');$('infoBtn').setAttribute('aria-expanded',$('infoPanel').classList.contains('open')); };$('langSelect').onchange=setLanguage; $('locSetBtn').onclick=setPlace; $('locInput').onkeydown=e=>{if(e.key==='Enter')setPlace()}; $('locGeoBtn').onclick=useGeolocation; $('sendBtn').onclick=()=>send(); $('textInput').onkeydown=e=>{if(e.key==='Enter')send()};$('micBtn').onclick=voice; document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>send(b.dataset.q)); });
+</script>
+</body>
+</html>
