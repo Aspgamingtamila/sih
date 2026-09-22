@@ -44,10 +44,10 @@ function updateLocation() {
   fetchWeather(currentLat, currentLon);
 }
 
-// 4. Gemini 3.5 API Integration
+// 4. Gemini 1.5 API Integration (Fixed Endpoint)
 async function askGemini(question, context) {
   const key = 'AQ.Ab8RN6IEQ33FnRbEu5ZfHuluWjuixCfF9MYoFB3M1TO5pwAUGg'; 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
   
   const response = await fetch(url, {
     method: 'POST',
@@ -64,7 +64,10 @@ async function askGemini(question, context) {
     })
   });
 
-  if(!response.ok) throw new Error('API Request Failed'); 
+  if(!response.ok) {
+    console.error("API Error:", response.status, await response.text());
+    throw new Error('API Request Failed'); 
+  }
   const data = await response.json(); 
   return data.candidates?.[0]?.content?.parts?.[0]?.text || 'I could not generate a response.';
 }
@@ -97,7 +100,7 @@ async function sendMsg(text) {
     chatContainer.innerHTML += `<div class="msg assistant"><div class="bubble">${response.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')}</div></div>`;
   } catch (e) {
     document.getElementById(typingId).remove();
-    chatContainer.innerHTML += `<div class="msg assistant"><div class="bubble">Network error connecting to AI backend.</div></div>`;
+    chatContainer.innerHTML += `<div class="msg assistant"><div class="bubble">Network error connecting to AI backend. Check browser console for details.</div></div>`;
   }
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
