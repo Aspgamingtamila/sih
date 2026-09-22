@@ -3,440 +3,376 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WeatherGPT — Conversational Weather Intelligence</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<title>WeatherGPT - Live Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0B1220;
-    --panel:#121B2E;
-    --panel-2:#16223A;
-    --grid:#1C2A44;
-    --line:#2A3B57;
-    --signal:#4CE0B3;
-    --signal-dim:#2C7A65;
-    --amber:#F5A623;
-    --danger:#FF5A5F;
-    --text:#E8EDF5;
-    --muted:#8C9BB5;
-    --user-bubble:#1E3A5F;
-    --radius:4px;
+  :root {
+    --text-dark: #122b3f;
+    --text-muted: #5a7b94;
+    --green-accent: #0f9d58;
+    --lime-btn: #c4ed2d;
+    --panel-dark: #153853;
+    --panel-darker: #0d263b;
+    --bg-gradient: linear-gradient(135deg, #e6f7f4 0%, #f4f9fb 100%);
+    --chat-bg: #ffffff;
+    --bot-bubble: #eef7f2;
+    --user-bubble: #e3f2fd;
+    --border: #e0e6ed;
+    --primary-blue: #007bff;
   }
-  *{box-sizing:border-box;}
-  html,body{height:100%;}
-  body{
-    margin:0;
-    background:var(--bg);
-    color:var(--text);
-    font-family:'IBM Plex Sans',-apple-system,sans-serif;
-    -webkit-font-smoothing:antialiased;
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-gradient);
+    color: var(--text-dark);
+    min-height: 100vh;
+    padding-bottom: 40px;
   }
-  .mono{font-family:'IBM Plex Mono',monospace;}
+  .container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  /* --- Header & Hero --- */
+  header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; }
+  .header-controls { display: flex; gap: 15px; align-items: center; font-size: 14px; font-weight: 600; }
+  .live-dot { color: var(--green-accent); }
+  
+  .hero { margin: 40px 0; display: flex; justify-content: space-between; align-items: flex-start; }
+  .hero-text h4 { color: var(--text-muted); letter-spacing: 1px; font-size: 12px; text-transform: uppercase; margin: 0; }
+  .hero-text h1 { font-size: 48px; font-weight: 800; line-height: 1.1; margin: 10px 0 15px; }
+  .hero-text h1 span { color: var(--green-accent); }
+  .hero-text p { font-size: 16px; color: var(--text-muted); max-width: 400px; margin: 0; line-height: 1.5; }
+  .status-card { background: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); font-size: 13px; font-weight: 600; }
 
-  #app{
-    display:flex;
-    flex-direction:column;
-    height:100dvh;
-    max-width:760px;
-    margin:0 auto;
-    position:relative;
-    border-left:1px solid var(--grid);
-    border-right:1px solid var(--grid);
-  }
+  /* --- Top Search Panel --- */
+  .search-panel { background: var(--panel-dark); border-radius: 12px; padding: 25px; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-bottom: 30px; }
+  .dropdown-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+  .input-group { flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 12px; min-width: 200px;}
+  select { padding: 12px; border-radius: 6px; border: none; background: white; font-family: inherit; font-weight: 600; color: var(--text-dark); cursor: pointer; }
+  .btn-explore { background: var(--lime-btn); color: var(--text-dark); border: none; border-radius: 6px; font-weight: 800; padding: 0 24px; cursor: pointer; margin-top: 22px; height: 42px; }
+  .quick-places { display: flex; gap: 10px; align-items: center; font-size: 12px; flex-wrap: wrap; }
+  .quick-places span:first-child { color: #8C9BB5; }
+  .pill { background: var(--panel-darker); padding: 6px 12px; border-radius: 20px; cursor: pointer; transition: 0.2s; }
+  .pill:hover { background: var(--primary-blue); }
 
-  /* ---------- header ---------- */
-  header{
-    position:relative;
-    padding:18px 20px 14px;
-    border-bottom:1px solid var(--grid);
-    overflow:hidden;
-    flex-shrink:0;
-  }
-  header::before{
-    content:"";
-    position:absolute;
-    top:-140px; right:-140px;
-    width:320px; height:320px;
-    background:conic-gradient(from 0deg, transparent 0deg, rgba(76,224,179,0.14) 40deg, transparent 90deg, transparent 360deg);
-    border-radius:50%;
-    animation:sweep 8s linear infinite;
-    pointer-events:none;
-  }
-  @media (prefers-reduced-motion: reduce){
-    header::before{animation:none;}
-  }
-  @keyframes sweep{ to{ transform:rotate(360deg); } }
-  .brand-row{display:flex; align-items:baseline; justify-content:space-between; gap:12px; position:relative; z-index:1;}
-  .brand{display:flex; align-items:baseline; gap:10px;}
-  .brand h1{font-size:19px; font-weight:600; margin:0; letter-spacing:0.2px;}
-  .brand span.tag{font-size:11px; color:var(--muted); font-family:'IBM Plex Mono',monospace;}
-  .header-controls{display:flex; align-items:center; gap:8px;}
-  select, .btn-ghost{
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    color:var(--text);
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    padding:6px 8px;
-    border-radius:var(--radius);
-    cursor:pointer;
-  }
-  select:focus-visible, .btn-ghost:focus-visible, input:focus-visible, button:focus-visible{
-    outline:2px solid var(--signal);
-    outline-offset:1px;
-  }
-  .btn-ghost:hover{border-color:var(--signal-dim);}
-
-  .subtitle{margin:6px 0 0; font-size:12.5px; color:var(--muted); position:relative; z-index:1;}
-
-  /* ---------- conditions strip ---------- */
-  .conditions{
-    display:flex;
-    align-items:center;
-    gap:14px;
-    padding:10px 20px;
-    background:var(--panel);
-    border-bottom:1px solid var(--grid);
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12.5px;
-    color:var(--muted);
-    flex-wrap:wrap;
-    flex-shrink:0;
-  }
-  .conditions b{color:var(--text); font-weight:500;}
-  .conditions .loc-form{display:flex; gap:6px; margin-left:auto; align-items:center;}
-  .conditions input[type=text]{
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    color:var(--text);
-    border-radius:var(--radius);
-    padding:5px 8px;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    width:150px;
-  }
-  .sig{color:var(--signal);}
-
-  /* ---------- info panel ---------- */
-  #infoPanel{
-    display:none;
-    padding:14px 20px;
-    background:var(--panel-2);
-    border-bottom:1px solid var(--grid);
-    font-size:12.5px;
-    color:var(--muted);
-    line-height:1.6;
-  }
-  #infoPanel.open{display:block;}
-  #infoPanel b{color:var(--text);}
-
-  /* ---------- chat ---------- */
-  #chat{
-    flex:1;
-    overflow-y:auto;
-    padding:18px 20px;
-    display:flex;
-    flex-direction:column;
-    gap:14px;
-  }
-  .msg{max-width:86%; display:flex; flex-direction:column; gap:6px;}
-  .msg.user{align-self:flex-end; align-items:flex-end;}
-  .msg.assistant{align-self:flex-start; align-items:flex-start;}
-  .bubble{
-    padding:11px 13px;
-    border-radius:6px;
-    font-size:14px;
-    line-height:1.55;
-    white-space:pre-wrap;
-  }
-  .msg.user .bubble{background:var(--user-bubble); border:1px solid #2C4A70;}
-  .msg.assistant .bubble{
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    border-left:3px solid var(--signal);
-  }
-  .msg.assistant .bubble.severity-moderate{border-left-color:var(--amber);}
-  .msg.assistant .bubble.severity-high{border-left-color:var(--amber); box-shadow:inset 0 0 0 1px rgba(245,166,35,0.15);}
-  .msg.assistant .bubble.severity-severe{border-left-color:var(--danger); box-shadow:inset 0 0 0 1px rgba(255,90,95,0.18);}
-  .tag-row{display:flex; gap:6px; flex-wrap:wrap;}
-  .tag{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10.5px;
-    letter-spacing:0.3px;
-    padding:2px 6px;
-    border-radius:3px;
-    border:1px solid var(--line);
-    color:var(--muted);
-  }
-  .tag.moderate{color:var(--amber); border-color:var(--amber);}
-  .tag.high{color:var(--amber); border-color:var(--amber);}
-  .tag.severe{color:var(--danger); border-color:var(--danger);}
-
-  .msg-actions{display:flex; gap:6px;}
-  .icon-btn{
-    background:none; border:none; color:var(--muted); cursor:pointer;
-    font-size:12px; padding:2px 4px; font-family:'IBM Plex Mono',monospace;
-  }
-  .icon-btn:hover{color:var(--signal);}
-
-  .readout{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:11.5px;
-    color:var(--muted);
-    border:1px solid var(--grid);
-    border-radius:var(--radius);
-    overflow-x:auto;
-    background:var(--panel);
-  }
-  .readout table{border-collapse:collapse; width:100%; min-width:420px;}
-  .readout th, .readout td{padding:6px 10px; text-align:left; border-bottom:1px solid var(--grid); white-space:nowrap;}
-  .readout th{color:var(--muted); font-weight:500; font-size:10.5px; text-transform:none;}
-  .readout tr:last-child td{border-bottom:none;}
-  .readout .warn{color:var(--amber);}
-  .readout .danger{color:var(--danger);}
-
-  .typing{display:flex; gap:4px; padding:6px 2px;}
-  .typing span{width:6px; height:6px; border-radius:50%; background:var(--signal-dim); animation:blink 1.2s infinite ease-in-out;}
-  .typing span:nth-child(2){animation-delay:0.2s;}
-  .typing span:nth-child(3){animation-delay:0.4s;}
-  @keyframes blink{ 0%,80%,100%{opacity:0.25;} 40%{opacity:1;} }
-
-  /* ---------- input area ---------- */
-  .chips{
-    display:flex; gap:6px; padding:0 20px 10px; flex-wrap:wrap; flex-shrink:0;
-  }
-  .chip{
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    color:var(--muted);
-    border-radius:14px;
-    padding:5px 11px;
-    font-size:12px;
-    cursor:pointer;
-  }
-  .chip:hover{border-color:var(--signal-dim); color:var(--text);}
-
-  #inputBar{
-    display:flex;
-    gap:8px;
-    padding:12px 20px 16px;
-    border-top:1px solid var(--grid);
-    background:var(--panel);
-    flex-shrink:0;
-  }
-  #textInput{
-    flex:1;
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    color:var(--text);
-    padding:11px 12px;
-    border-radius:var(--radius);
-    font-size:14px;
-    font-family:inherit;
-  }
-  #textInput::placeholder{color:var(--muted);}
-  .round-btn{
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    color:var(--text);
-    width:42px; height:42px;
-    border-radius:var(--radius);
-    cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-    font-size:16px;
-    flex-shrink:0;
-  }
-  .round-btn:hover{border-color:var(--signal-dim);}
-  #micBtn.listening{
-    border-color:var(--danger);
-    color:var(--danger);
-    animation:pulse 1.1s infinite;
-  }
-  @keyframes pulse{ 0%,100%{box-shadow:0 0 0 0 rgba(255,90,95,0.35);} 50%{box-shadow:0 0 0 6px rgba(255,90,95,0);} }
-  #sendBtn{background:var(--signal-dim); border-color:var(--signal-dim); color:#06140F;}
-  #sendBtn:hover{background:var(--signal); border-color:var(--signal);}
-
-  ::-webkit-scrollbar{width:8px; height:8px;}
-  ::-webkit-scrollbar-thumb{background:var(--grid); border-radius:4px;}
-
-  @media (max-width:480px){
-    .conditions .loc-form{width:100%; margin-left:0;}
-    .conditions input[type=text]{flex:1; width:auto;}
-    header{padding:14px 14px 10px;}
-    .conditions,#chat,.chips,#inputBar{padding-left:14px; padding-right:14px;}
+  /* --- Map & Chat Grid --- */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    height: 600px;
   }
 
+  /* Map Panel */
+  .map-panel { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+  .map-panel iframe { width: 100%; height: 100%; border: none; }
+
+  /* Chat Interface */
+  .chat-panel {
+    background: var(--chat-bg);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+  .chat-header {
+    background: var(--panel-dark);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .chat-icon { width: 32px; height: 32px; background: var(--lime-btn); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .chat-header-text h3 { margin: 0; font-size: 15px; font-weight: 700; }
+  .chat-header-text p { margin: 2px 0 0; font-size: 11px; color: #8C9BB5; }
+  
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: #fafbfc;
+  }
+  .msg { max-width: 90%; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.assistant { align-self: flex-start; align-items: flex-start; }
+  .bubble { padding: 12px 16px; border-radius: 8px; white-space: pre-wrap; }
+  .msg.user .bubble { background: var(--user-bubble); color: var(--text-dark); border-bottom-right-radius: 2px; }
+  .msg.assistant .bubble { background: var(--bot-bubble); color: var(--text-dark); border-bottom-left-radius: 2px; border: 1px solid #d4ebd9; }
+  
+  .chat-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 20px 10px;
+    background: #fafbfc;
+  }
+  .chat-chip {
+    background: white;
+    border: 1px solid #b3d4ff;
+    color: #4a657a;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .chat-chip:hover { border-color: var(--primary-blue); color: var(--primary-blue); }
+
+  .chat-input-area {
+    padding: 16px 20px;
+    background: white;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .icon-mic { color: var(--text-muted); cursor: pointer; font-size: 18px; }
+  #chatInput {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-dark);
+  }
+  #chatInput::placeholder { color: #a0aec0; }
+  .send-btn {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: 0.2s;
+  }
+  .send-btn:hover { background: #0056b3; }
+  
+  .typing { display: flex; gap: 4px; padding: 12px 16px; background: var(--bot-bubble); border-radius: 8px; align-self: flex-start; border-bottom-left-radius: 2px;}
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: #0f9d58; animation: blink 1.2s infinite ease-in-out; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:0.3;} 40%{opacity:1;} }
+
+  @media (max-width: 900px) {
+    .main-layout { grid-template-columns: 1fr; height: auto; }
+    .map-panel { height: 400px; }
+    .chat-panel { height: 500px; }
+    .hero { flex-direction: column; gap: 20px; }
+  }
 </style>
 </head>
 <body>
-<div id="app">
 
+<div class="container">
+  <!-- Header -->
   <header>
-    <div class="brand-row">
-      <div class="brand">
-        <h1>WeatherGPT</h1>
-        <span class="tag">MoES · IMD concept prototype</span>
-      </div>
-      <div class="header-controls">
-        <select id="langSelect" aria-label="Response language"></select>
-        <button class="btn-ghost" id="infoBtn" aria-expanded="false">i</button>
-      </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="background:var(--primary-blue); width:24px; height:24px; border-radius:50%;"></div>
+      <strong>WeatherGPT</strong>
     </div>
-    <p class="subtitle">Ask about forecasts, warnings or advisories in plain language — by typing or by voice.</p>
+    <div class="header-controls">
+      <span><span class="live-dot">●</span> LIVE DATA</span>
+      <select><option>English</option></select>
+    </div>
   </header>
 
-  <div id="infoPanel">
-    <div><b>How this prototype works</b></div>
-    <div>Query understanding &amp; multilingual response generation: an LLM (Gemini 3.5 Flash).</div>
-    <div>Live weather &amp; 16-day forecast data: Open-Meteo global NWP blend (GFS/ICON/others) — a stand-in for direct GFS/WRF + WIS2.0 ingestion in a production IMD deployment.</div>
-    <div>Alert thresholds: computed locally from forecast fields (rain, gusts, heat/cold) using indicative IMD-style thresholds — not official warnings.</div>
-    <div>Voice input/output: browser Web Speech API, for low-literacy / rural accessibility.</div>
-    <div>Production path: FastAPI/Node backend, WIS2.0 + MQTT ingestion, PostgreSQL/PostGIS, containerised on Kubernetes, official IMD warning feed as the alert source of truth.</div>
-  </div>
-
-  <div class="conditions" id="conditionsStrip">
-    <span class="mono">…locating</span>
-    <div class="loc-form">
-      <input type="text" id="locInput" placeholder="Set location (e.g. Madurai)" aria-label="Set location">
-      <button class="btn-ghost" id="locSetBtn">Set</button>
-      <button class="btn-ghost" id="locGeoBtn" title="Use my location">📍</button>
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-text">
+      <h4>India's Conversational Weather Intelligence</h4>
+      <h1>Know the weather.<br><span>Know what to do.</span></h1>
+      <p>Real-time forecasts become clear, local actions for safer communities, farms and journeys.</p>
     </div>
+    <div class="status-card">
+      <span class="live-dot">✓</span> All weather systems operational
+    </div>
+  </section>
+
+  <!-- Search Panel -->
+  <section class="search-panel">
+    <div class="dropdown-row">
+      <div class="input-group">
+        <label>Country</label>
+        <select><option>India</option></select>
+      </div>
+      <div class="input-group">
+        <label>State / Region</label>
+        <select><option>Tamil Nadu</option></select>
+      </div>
+      <div class="input-group">
+        <label>District / City</label>
+        <select id="locationSelect">
+          <option value="Chennai" data-lat="13.0827" data-lon="80.2707">Chennai</option>
+          <option value="Mumbai" data-lat="19.0760" data-lon="72.8777">Mumbai</option>
+          <option value="Delhi" data-lat="28.6139" data-lon="77.2090">Delhi</option>
+          <option value="Tirunelveli" data-lat="8.7139" data-lon="77.7567">Tirunelveli</option>
+        </select>
+      </div>
+      <button class="btn-explore" onclick="updateLocation()">Explore weather →</button>
+    </div>
+    <div class="quick-places">
+      <span>QUICK PLACES</span>
+      <span class="pill" onclick="setQuickPlace('Chennai')">Chennai</span>
+      <span class="pill" onclick="setQuickPlace('Mumbai')">Mumbai</span>
+      <span class="pill" onclick="setQuickPlace('Delhi')">Delhi</span>
+      <span class="pill" onclick="setQuickPlace('Tirunelveli')">Tirunelveli</span>
+    </div>
+  </section>
+
+  <!-- Split Layout: Map & Chat -->
+  <div class="main-layout">
+    
+    <!-- Map Column -->
+    <div class="map-panel">
+      <iframe id="windyIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=%C2%B0C&metricWind=km/h&zoom=5&overlay=wind&product=ecmwf&level=surface&lat=20.5937&lon=78.9629"></iframe>
+    </div>
+
+    <!-- Chat Column -->
+    <div class="chat-panel">
+      <div class="chat-header">
+        <div class="chat-icon">✦</div>
+        <div class="chat-header-text">
+          <h3>WeatherGPT</h3>
+          <p>Action intelligence assistant</p>
+        </div>
+      </div>
+      
+      <div class="chat-messages" id="chat">
+        <!-- Default Welcome Message -->
+        <div class="msg assistant">
+          <div class="bubble">Hello! I am ready to help with weather, safety alerts, travel or farming decisions for <b id="chatLocName">Chennai</b>. What would you like to know?</div>
+        </div>
+      </div>
+
+      <div class="chat-chips" id="chips">
+        <div class="chat-chip" onclick="sendMsg('Will it rain tomorrow?')">Will it rain tomorrow?</div>
+        <div class="chat-chip" onclick="sendMsg('Is it safe to travel?')">Is it safe to travel?</div>
+        <div class="chat-chip" onclick="sendMsg('What should farmers do?')">What should farmers do?</div>
+      </div>
+
+      <div class="chat-input-area">
+        <span class="icon-mic" onclick="alert('Voice recognition not enabled in this snippet.')">🎙</span>
+        <input type="text" id="chatInput" placeholder="Ask about weather or safety..." onkeypress="if(event.key === 'Enter') sendMsg()">
+        <button class="send-btn" onclick="sendMsg()">↑</button>
+      </div>
+    </div>
+
   </div>
-
-  <div id="chat" aria-live="polite"></div>
-
-  <div class="chips" id="chips">
-    <button class="chip" data-q="Give me today's forecast for my location">Today's forecast</button>
-    <button class="chip" data-q="Give me a 7 day crop advisory for my location">Crop advisory</button>
-    <button class="chip" data-q="Give me an aviation weather briefing for my location for today">Flight briefing</button>
-    <button class="chip" data-q="Give me a coastal and marine outlook for my location for the next 3 days">Marine outlook</button>
-    <button class="chip" data-q="Are there any severe weather alerts for my location this week?">Any alerts?</button>
-  </div>
-
-  <div id="inputBar">
-    <button class="round-btn" id="micBtn" title="Voice input" aria-label="Voice input">🎙</button>
-    <input type="text" id="textInput" placeholder="Type your weather question…" aria-label="Type your weather question">
-    <button class="round-btn" id="sendBtn" title="Send" aria-label="Send">➤</button>
-  </div>
-
 </div>
 
 <script>
-/* WeatherGPT client */
-const ui = {
-  en: { locating: '…locating', location: 'Location', set: 'Set', placeholder: 'Type your weather question…', intro: 'Hello — I’m WeatherGPT. Set a location or use the location button, then ask about forecasts, warnings, crops, flights, or marine conditions.', unavailable: 'I could not load weather data. Please check the location and try again.', keyNeeded: 'Live weather is available below. Add a Gemini API key through a secure backend (or window.WEATHERGPT_GEMINI_API_KEY for local testing) for a tailored response.', listening: 'Listening…' },
-  hi: { locating: '…स्थान खोजा जा रहा है', location: 'स्थान', set: 'सेट करें', placeholder: 'मौसम का प्रश्न लिखें…', intro: 'नमस्ते — मैं WeatherGPT हूँ। स्थान सेट करें या स्थान बटन का उपयोग करें, फिर पूर्वानुमान, चेतावनी, खेती या उड़ान के बारे में पूछें।', unavailable: 'मौसम डेटा लोड नहीं हो सका। स्थान जाँचकर पुनः प्रयास करें।', keyNeeded: 'नीचे लाइव मौसम उपलब्ध है। व्यक्तिगत Gemini उत्तर के लिए सुरक्षित बैकएंड से API कुंजी जोड़ें।', listening: 'सुन रहा हूँ…' },
-  ta: { locating: '…இருப்பிடம் கண்டறியப்படுகிறது', location: 'இருப்பிடம்', set: 'அமை', placeholder: 'வானிலை கேள்வியை தட்டச்சிடவும்…', intro: 'வணக்கம் — நான் WeatherGPT. இருப்பிடத்தை அமைக்கவும் அல்லது இருப்பிட பொத்தானைப் பயன்படுத்தவும்; பிறகு முன்னறிவிப்பு, எச்சரிக்கை அல்லது பயிர் ஆலோசனை பற்றி கேளுங்கள்.', unavailable: 'வானிலைத் தரவை ஏற்ற முடியவில்லை. இருப்பிடத்தைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.', keyNeeded: 'நேரடி வானிலை கீழே உள்ளது. தனிப்பட்ட Gemini பதிலுக்கு பாதுகாப்பான பின்னணியில் API விசையைச் சேர்க்கவும்.', listening: 'கேட்கிறது…' }
-};
-const languages = [['en','English'],['hi','हिन्दी'],['ta','தமிழ்']];
-let lang = localStorage.getItem('weathergpt-lang') || 'en';
-let place = null, weather = null, recognition = null;
-const $ = id => document.getElementById(id);
-const esc = text => String(text).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let currentWeatherData = null;
+  let currentCity = "Chennai";
+  let currentLat = 13.0827;
+  let currentLon = 80.2707;
 
-function t(){ return ui[lang] || ui.en; }
-
-function addMessage(text, role='assistant', tags=[], speak=false){
-  const msg=document.createElement('div'); msg.className='msg '+role;
-  const bubble=document.createElement('div'); bubble.className='bubble'; bubble.textContent=text; 
-  
-  if (role === 'assistant' && tags.length > 0) {
-    const combined = tags.join(' ').toLowerCase();
-    if (combined.includes('severe') || combined.includes('strong')) bubble.classList.add('severity-severe');
-    else if (combined.includes('heavy') || combined.includes('heat') || combined.includes('cold')) bubble.classList.add('severity-high');
-    else if (combined.includes('moderate')) bubble.classList.add('severity-moderate');
-  }
-  msg.appendChild(bubble);
-
-  if(tags.length){ 
-    const row=document.createElement('div'); row.className='tag-row'; 
-    row.innerHTML=tags.map(x => {
-      const t = x.toLowerCase();
-      let cls = 'tag';
-      if(t.includes('severe') || t.includes('strong')) cls += ' severe';
-      else if(t.includes('heavy') || t.includes('heat') || t.includes('cold')) cls += ' high';
-      else if(t.includes('moderate')) cls += ' moderate';
-      return `<span class="${cls}">${esc(x)}</span>`;
-    }).join(''); 
-    msg.appendChild(row); 
-  }
-
-  if(role==='assistant' && 'speechSynthesis' in window){ 
-    const actions=document.createElement('div'); actions.className='msg-actions'; 
-    const button=document.createElement('button'); button.className='icon-btn'; 
-    button.textContent='🔊 Read aloud'; button.onclick=()=>speakText(text); 
-    actions.appendChild(button); msg.appendChild(actions); 
-  }
-  
-  $('chat').appendChild(msg); $('chat').scrollTop=$('chat').scrollHeight; if(speak) speakText(text);
-}
-
-function speakText(text){ speechSynthesis.cancel(); const utterance=new SpeechSynthesisUtterance(text); utterance.lang=lang==='hi'?'hi-IN':lang==='ta'?'ta-IN':'en-IN'; speechSynthesis.speak(utterance); }
-function setLanguage(){
-  lang=$('langSelect').value; localStorage.setItem('weathergpt-lang',lang); document.documentElement.lang=lang;
-  $('conditionsStrip').firstElementChild.textContent=place ? `${t().location}: ${place.name}` : t().locating;
-  $('locInput').placeholder=`${t().location} (e.g. Madurai)`; $('locSetBtn').textContent=t().set; $('textInput').placeholder=t().placeholder;
-}
-async function resolveLocation(name){
-  const url='https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name='+encodeURIComponent(name);
-  const data=await fetch(url).then(r=>r.ok?r.json():Promise.reject(r));
-  if(!data.results?.[0]) throw new Error('Location not found'); const result=data.results[0];
-  return {name:[result.name,result.admin1,result.country].filter(Boolean).join(', '), latitude:result.latitude, longitude:result.longitude};
-}
-async function fetchWeather(location){
-  const params=new URLSearchParams({latitude:location.latitude,longitude:location.longitude,current:'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m',daily:'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_gusts_10m',timezone:'auto',forecast_days:'7'});
-  weather=await fetch('https://api.open-meteo.com/v1/forecast?'+params).then(r=>r.ok?r.json():Promise.reject(r)); place=location;
-  const c=weather.current; $('conditionsStrip').firstElementChild.innerHTML=`<b>${esc(place.name)}</b> · ${Math.round(c.temperature_2m)}°C · feels ${Math.round(c.apparent_temperature)}°C · wind ${Math.round(c.wind_speed_10m)} km/h`;
-}
-function alerts(){
-  if(!weather) return []; const d=weather.daily, out=[];
-  const maxRain=Math.max(...d.precipitation_sum), maxGust=Math.max(...d.wind_gusts_10m), maxTemp=Math.max(...d.temperature_2m_max), minTemp=Math.min(...d.temperature_2m_min);
-  if(maxRain>=64) out.push('Severe rain potential'); else if(maxRain>=35) out.push('Heavy rain potential');
-  if(maxGust>=75) out.push('Strong wind potential'); if(maxTemp>=40) out.push('Heat risk'); if(minTemp<=5) out.push('Cold risk'); return out;
-}
-function localBriefing(question){
-  const d=weather.daily, rows=d.time.slice(0,3).map((date,i)=>`${date}: ${Math.round(d.temperature_2m_min[i])}–${Math.round(d.temperature_2m_max[i])}°C, rain ${d.precipitation_sum[i]} mm, gusts ${Math.round(d.wind_gusts_10m[i])} km/h`).join('\n');
-  const risk=alerts(); return `Weather for ${place.name}\nNow: ${Math.round(weather.current.temperature_2m)}°C (feels ${Math.round(weather.current.apparent_temperature)}°C), wind ${Math.round(weather.current.wind_speed_10m)} km/h.\n\nNext 3 days:\n${rows}${risk.length?'\n\nIndicative alert flags: '+risk.join('; ')+'. These are computed from forecast thresholds and are not official warnings.':''}`;
-}
-
-async function askGemini(question, context){
-  const key = 'AQ.Ab8RN6IEQ33FnRbEu5ZfHuluWjuixCfF9MYoFB3M1TO5pwAUGg'; 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`;
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { 
-        parts: [{ text: 'You are WeatherGPT. Give concise, safety-conscious weather guidance in ' + lang + '. Forecast data: ' + context }] 
-      },
-      contents: [{ 
-        role: 'user', 
-        parts: [{ text: question }] 
-      }],
-      generationConfig: { 
-        maxOutputTokens: 700 
-      }
-    })
+  // 1. Initial Setup
+  document.addEventListener("DOMContentLoaded", () => {
+    fetchWeather(currentLat, currentLon);
   });
 
-  if(!response.ok) throw new Error('Gemini request failed'); 
-  const data = await response.json(); 
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
+  // 2. Fetch Live Weather Data Context (Open-Meteo)
+  async function fetchWeather(lat, lon) {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_gusts_10m_max&timezone=auto&forecast_days=3`;
+      const response = await fetch(url);
+      currentWeatherData = await response.json();
+    } catch (error) {
+      console.error("Failed to load weather context", error);
+      currentWeatherData = "Weather data temporarily unavailable.";
+    }
+  }
 
-async function send(question){
-  question=(question||$('textInput').value).trim(); if(!question) return; $('textInput').value=''; addMessage(question,'user');
-  const typing=document.createElement('div'); typing.className='typing'; typing.innerHTML='<span></span><span></span><span></span>'; $('chat').appendChild(typing); $('chat').scrollTop=$('chat').scrollHeight;
-  try { if(!weather){ const query=$('locInput').value.trim() || 'Madurai'; await fetchWeather(await resolveLocation(query)); }
-    const brief=localBriefing(question); let answer; try { answer=await askGemini(question,brief); } catch { answer=null; }
-    typing.remove(); addMessage(answer || brief,'assistant',alerts().length?['Forecast',...alerts().slice(0,2)]:['Forecast']); if(!answer) addMessage(t().keyNeeded,'assistant',['SETUP']);
-  } catch(e) { typing.remove(); addMessage(t().unavailable,'assistant',['ERROR']); }
-}
-async function setPlace(){ try { const name=$('locInput').value.trim(); if(!name) return; await fetchWeather(await resolveLocation(name)); addMessage(localBriefing('forecast'),'assistant',alerts().length?['Forecast',...alerts()]:['Forecast']); } catch { addMessage(t().unavailable,'assistant',['ERROR']); } }
-function useGeolocation(){ if(!navigator.geolocation){ addMessage('Geolocation is not supported by this browser.','assistant',['ERROR']); return; } navigator.geolocation.getCurrentPosition(async pos=>{ try { const lat=pos.coords.latitude, lon=pos.coords.longitude; await fetchWeather({name:`${lat.toFixed(3)}, ${lon.toFixed(3)}`,latitude:lat,longitude:lon}); addMessage(localBriefing('forecast'),'assistant',['Forecast']); } catch { addMessage(t().unavailable,'assistant',['ERROR']); } },()=>addMessage('Location permission was not granted. Enter a location instead.','assistant',['LOCATION'])); }
-function voice(){ const R=window.SpeechRecognition||window.webkitSpeechRecognition; if(!R){ addMessage('Voice input is not supported by this browser.','assistant',['VOICE']); return; } if(recognition){ recognition.stop(); return; } recognition=new R(); recognition.lang=lang==='hi'?'hi-IN':lang==='ta'?'ta-IN':'en-IN'; recognition.interimResults=false; $('micBtn').classList.add('listening'); recognition.onresult=e=>{ $('textInput').value=e.results[0][0].transcript; }; recognition.onend=()=>{$('micBtn').classList.remove('listening'); recognition=null; }; recognition.start(); }
-document.addEventListener('DOMContentLoaded',()=>{ languages.forEach(([value,label])=>$('langSelect').add(new Option(label,value))); $('langSelect').value=lang; setLanguage(); addMessage(t().intro,'assistant',['READY']);$('infoBtn').onclick=()=>{ $('infoPanel').classList.toggle('open');$('infoBtn').setAttribute('aria-expanded',$('infoPanel').classList.contains('open')); };$('langSelect').onchange=setLanguage; $('locSetBtn').onclick=setPlace; $('locInput').onkeydown=e=>{if(e.key==='Enter')setPlace()}; $('locGeoBtn').onclick=useGeolocation; $('sendBtn').onclick=()=>send(); $('textInput').onkeydown=e=>{if(e.key==='Enter')send()};$('micBtn').onclick=voice; document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>send(b.dataset.q)); });
+  // 3. Update Location via Dropdown or Pills
+  function setQuickPlace(city) {
+    const select = document.getElementById("locationSelect");
+    select.value = city;
+    updateLocation();
+  }
+
+  function updateLocation() {
+    const select = document.getElementById("locationSelect");
+    const option = select.options[select.selectedIndex];
+    currentCity = option.value;
+    currentLat = option.getAttribute("data-lat");
+    currentLon = option.getAttribute("data-lon");
+    
+    // Update UI
+    document.getElementById("chatLocName").innerText = currentCity;
+    
+    // Update Map
+    document.getElementById("windyIframe").src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=%C2%B0C&metricWind=km/h&zoom=7&overlay=wind&product=ecmwf&level=surface&lat=${currentLat}&lon=${currentLon}`;
+    
+    // Fetch new background context
+    fetchWeather(currentLat, currentLon);
+  }
+
+  // 4. Gemini 3.5 API Integration
+  async function askGemini(question, context) {
+    const key = 'AQ.Ab8RN6IEQ33FnRbEu5ZfHuluWjuixCfF9MYoFB3M1TO5pwAUGg'; 
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { 
+          parts: [{ text: `You are WeatherGPT, a highly helpful assistant on a dashboard. Keep answers very concise, friendly, and structured. Location: ${currentCity}. Forecast context: ${JSON.stringify(context)}` }] 
+        },
+        contents: [{ 
+          role: 'user', 
+          parts: [{ text: question }] 
+        }],
+        generationConfig: { maxOutputTokens: 300 }
+      })
+    });
+
+    if(!response.ok) throw new Error('API Request Failed'); 
+    const data = await response.json(); 
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'I could not generate a response.';
+  }
+
+  // 5. Chat Interface Logic
+  async function sendMsg(text) {
+    const inputField = document.getElementById("chatInput");
+    const msgText = text || inputField.value.trim();
+    if (!msgText) return;
+
+    inputField.value = "";
+    document.getElementById("chips").style.display = "none"; // Hide chips after first message
+    
+    // Append User Message
+    const chatContainer = document.getElementById("chat");
+    chatContainer.innerHTML += `<div class="msg user"><div class="bubble">${msgText}</div></div>`;
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // Show Typing Indicator
+    const typingId = "typing-" + Date.now();
+    chatContainer.innerHTML += `<div id="${typingId}" class="typing"><span></span><span></span><span></span></div>`;
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    try {
+      // Call Gemini API
+      const response = await askGemini(msgText, currentWeatherData);
+      
+      // Remove typing & append Bot Message
+      document.getElementById(typingId).remove();
+      chatContainer.innerHTML += `<div class="msg assistant"><div class="bubble">${response.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')}</div></div>`;
+    } catch (e) {
+      document.getElementById(typingId).remove();
+      chatContainer.innerHTML += `<div class="msg assistant"><div class="bubble">Network error connecting to AI backend.</div></div>`;
+    }
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
 </script>
 </body>
 </html>
